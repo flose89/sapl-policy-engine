@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2023 Dominic Heutelbeck (dominic@heutelbeck.com)
+ * Copyright (C) 2017-2024 Dominic Heutelbeck (dominic@heutelbeck.com)
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -17,6 +17,7 @@
  */
 package io.sapl.springdatar2dbc.sapl;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
@@ -30,7 +31,6 @@ import java.util.NoSuchElementException;
 import java.util.stream.Stream;
 
 import org.aopalliance.intercept.MethodInvocation;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -42,6 +42,7 @@ import org.springframework.beans.factory.BeanFactory;
 
 import io.sapl.api.pdp.AuthorizationSubscription;
 import io.sapl.pdp.EmbeddedPolicyDecisionPoint;
+import io.sapl.springdatacommon.sapl.QueryManipulationEnforcementData;
 import io.sapl.springdatar2dbc.database.Person;
 import io.sapl.springdatar2dbc.sapl.queries.enforcement.PartTreeToSqlQueryStringConverter;
 
@@ -76,7 +77,7 @@ class PartTreeToSqlQueryStringConverterTest {
         var result = PartTreeToSqlQueryStringConverter.createSqlBaseQuery(enforcementData);
 
         // THEN
-        Assertions.assertEquals(sqlQueryResult, result);
+        assertEquals(sqlQueryResult, result);
     }
 
     @Test

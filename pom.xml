@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
 
-    Copyright (C) 2017-2023 Dominic Heutelbeck (dominic@heutelbeck.com)
+    Copyright (C) 2017-2024 Dominic Heutelbeck (dominic@heutelbeck.com)
 
     SPDX-License-Identifier: Apache-2.0
 
@@ -56,7 +56,7 @@
 		<name>Dominic Heutelbeck</name>
 		<url>https://heutelbeck.com</url>
 	</organization>
-	<inceptionYear>2017-2023</inceptionYear>
+	<inceptionYear>2017-2024</inceptionYear>
 	<licenses>
 		<license>
 			<name>Apache 2.0</name>
@@ -96,7 +96,7 @@
 		<failsafe.version>3.1.2</failsafe.version>
 		<docker-registry-url>ghcr.io/heutelbeck</docker-registry-url>
 		<sonar.exclusions>**/xtext-gen/**/*,**/xtend-gen/**/*,**/emf-gen/**/*</sonar.exclusions>
-		<argLine/>
+		<argLine />
 	</properties>
 
 	<modules>
@@ -126,7 +126,8 @@
 		<module>sapl-vaadin-theme</module>
 		<module>sapl-vaadin-editor</module>
 		<module>sapl-spring-data-r2dbc</module>
-		<module>sapl-spring-data-mongo-reactive</module>
+		<module>sapl-spring-data-mongo-reactive</module>		
+		<module>sapl-spring-data-common</module>
 	</modules>
 	<dependencyManagement>
 		<dependencies>
@@ -331,6 +332,9 @@
 					<groupId>org.apache.maven.plugins</groupId>
 					<artifactId>maven-surefire-plugin</artifactId>
 					<version>3.1.0</version>
+					<configuration>
+						<argLine>@{argLine} -Xshare:off</argLine>
+					</configuration>
 				</plugin>
 				<plugin>
 					<groupId>com.mycila</groupId>
@@ -600,7 +604,8 @@
 							<artifactId>maven-surefire-plugin</artifactId>
 							<version>3.1.0</version>
 							<configuration>
-								<argLine>@{argLine} -XX:+EnableDynamicAgentLoading</argLine>
+								<argLine>@{argLine} -Xshare:off
+									-XX:+EnableDynamicAgentLoading</argLine>
 							</configuration>
 						</plugin>
 					</plugins>

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2023 Dominic Heutelbeck (dominic@heutelbeck.com)
+ * Copyright (C) 2017-2024 Dominic Heutelbeck (dominic@heutelbeck.com)
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -17,7 +17,9 @@
  */
 package io.sapl.springdatar2dbc.sapl.proxy;
 
-import org.junit.jupiter.api.Assertions;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.verify;
+
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.Mockito;
@@ -28,7 +30,7 @@ import org.springframework.data.r2dbc.repository.support.R2dbcRepositoryFactoryB
 
 import io.sapl.springdatar2dbc.database.R2dbcPersonRepository;
 
-@SpringBootTest
+@SpringBootTest(classes = R2dbcPostProcessor.class)
 class R2dbcPostProcessorTest {
 
     @Autowired
@@ -52,8 +54,7 @@ class R2dbcPostProcessorTest {
                 "r2dbcRepositoryFactoryBean");
 
         // THEN
-        Assertions.assertEquals(result, r2dbcRepositoryFactoryBeanMock);
-        Mockito.verify(r2dbcRepositoryFactoryBeanMock, Mockito.times(1))
-                .addRepositoryFactoryCustomizer(r2dbcCustomizerMock);
+        assertEquals(result, r2dbcRepositoryFactoryBeanMock);
+        verify(r2dbcRepositoryFactoryBeanMock, Mockito.times(1)).addRepositoryFactoryCustomizer(r2dbcCustomizerMock);
     }
 }

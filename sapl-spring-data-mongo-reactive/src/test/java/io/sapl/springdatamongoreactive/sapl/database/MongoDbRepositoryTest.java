@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2023 Dominic Heutelbeck (dominic@heutelbeck.com)
+ * Copyright (C) 2017-2024 Dominic Heutelbeck (dominic@heutelbeck.com)
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -25,8 +25,8 @@ import org.springframework.data.mongodb.repository.Query;
 import org.springframework.data.mongodb.repository.ReactiveMongoRepository;
 import org.springframework.stereotype.Repository;
 
-import io.sapl.springdatamongoreactive.sapl.Enforce;
-import io.sapl.springdatamongoreactive.sapl.SaplProtected;
+import io.sapl.springdatacommon.sapl.Enforce;
+import io.sapl.springdatacommon.sapl.SaplProtected;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2023 Dominic Heutelbeck (dominic@heutelbeck.com)
+ * Copyright (C) 2017-2024 Dominic Heutelbeck (dominic@heutelbeck.com)
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -20,6 +20,7 @@ package io.sapl.springdatar2dbc.sapl.queries.enforcement;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -36,13 +37,10 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Answers;
-import org.mockito.Mock;
 import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.BeanFactory;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.data.r2dbc.core.R2dbcEntityTemplate;
 import org.springframework.security.access.AccessDeniedException;
 
@@ -55,61 +53,53 @@ import io.sapl.api.pdp.AuthorizationDecision;
 import io.sapl.api.pdp.AuthorizationSubscription;
 import io.sapl.api.pdp.Decision;
 import io.sapl.pdp.EmbeddedPolicyDecisionPoint;
+import io.sapl.springdatacommon.handlers.DataManipulationHandler;
+import io.sapl.springdatacommon.handlers.QueryManipulationObligationProvider;
+import io.sapl.springdatacommon.sapl.QueryManipulationEnforcementData;
+import io.sapl.springdatacommon.sapl.queries.enforcement.QueryAnnotationParameterResolver;
+import io.sapl.springdatacommon.sapl.utils.ConstraintHandlerUtils;
 import io.sapl.springdatar2dbc.database.MethodInvocationForTesting;
 import io.sapl.springdatar2dbc.database.Person;
 import io.sapl.springdatar2dbc.database.Role;
-import io.sapl.springdatar2dbc.sapl.QueryManipulationEnforcementData;
 import io.sapl.springdatar2dbc.sapl.QueryManipulationExecutor;
-import io.sapl.springdatar2dbc.sapl.handlers.DataManipulationHandler;
-import io.sapl.springdatar2dbc.sapl.handlers.LoggingConstraintHandlerProvider;
-import io.sapl.springdatar2dbc.sapl.handlers.R2dbcQueryManipulationObligationProvider;
-import io.sapl.springdatar2dbc.sapl.utils.ConstraintHandlerUtils;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
-@SpringBootTest
 @SuppressWarnings("rawtypes")
 class R2dbcAnnotationQueryManipulationEnforcementPointTest {
 
-    final static ObjectMapper objectMapper = new ObjectMapper();
-    static JsonNode           obligations;
-    static JsonNode           r2dbcQueryManipulation;
-    static JsonNode           condition;
-    static JsonNode           conditionWithConjunction;
-    static JsonNode           r2dbcQueryManipulationWithConjunction;
+    private static final ObjectMapper MAPPER                     = new ObjectMapper();
+    private static JsonNode           OBLIGATIONS;
+    private static JsonNode           R2DBC_QUERY_MANIPULATION;
+    private static JsonNode           CONDITION;
+    private static JsonNode           CONDITION_WITH_CONJUNCTION;
+    private static JsonNode           R2DBC_QUERY_MANIPULATION_WITH_CONJUCTION;
+    private static String             r2dbcQueryManipulationType = "r2dbcQueryManipulation";
 
     final Person       malinda       = new Person(1, "Malinda", "Perrot", 53, Role.ADMIN, true);
     final Flux<Person> malindaAsFlux = Flux.just(malinda);
 
-    @Mock
-    EmbeddedPolicyDecisionPoint pdpMock;
+    EmbeddedPolicyDecisionPoint pdpMock = mock(EmbeddedPolicyDecisionPoint.class);
 
-    @MockBean
-    LoggingConstraintHandlerProvider loggingConstraintHandlerProviderMock;
-
-    @MockBean(answer = Answers.RETURNS_DEEP_STUBS)
-    R2dbcEntityTemplate r2dbcEntityTemplateMock;
-
-    @Mock
-    BeanFactory beanFactoryMock;
-
-    @Mock
-    Flux<Map<String, Object>> fluxMap;
+    R2dbcEntityTemplate       r2dbcEntityTemplateMock = mock(R2dbcEntityTemplate.class, Answers.RETURNS_DEEP_STUBS);
+    BeanFactory               beanFactoryMock         = mock(BeanFactory.class);
+    @SuppressWarnings("unchecked")
+    Flux<Map<String, Object>> fluxMap                 = mock(Flux.class);;
 
     MockedStatic<ConstraintHandlerUtils>           constraintHandlerUtilsMock;
     MockedStatic<QueryAnnotationParameterResolver> queryAnnotationParameterResolverMockedStatic;
 
     @BeforeAll
     public static void setUp() throws JsonProcessingException {
-        obligations                           = objectMapper.readTree(
+        OBLIGATIONS                              = MAPPER.readTree(
                 "[{\"type\":\"r2dbcQueryManipulation\",\"condition\":\"firstname IN('Aaron', 'Cathrin')\"},{\"type\":\"filterJsonContent\",\"actions\":[{\"type\":\"blacken\",\"path\":\"$.firstname\",\"discloseLeft\":2}]},{\"type\":\"jsonContentFilterPredicate\",\"conditions\":[{\"type\":\"==\",\"path\":\"$.id\",\"value\":\"a1\"}]}]");
-        r2dbcQueryManipulation                = objectMapper
+        R2DBC_QUERY_MANIPULATION                 = MAPPER
                 .readTree("{\"type\":\"r2dbcQueryManipulation\",\"condition\":\"firstname IN('Aaron', 'Cathrin')\"}");
-        condition                             = r2dbcQueryManipulation.get("condition");
-        r2dbcQueryManipulationWithConjunction = objectMapper.readTree(
+        CONDITION                                = R2DBC_QUERY_MANIPULATION.get("condition");
+        R2DBC_QUERY_MANIPULATION_WITH_CONJUCTION = MAPPER.readTree(
                 "{\"type\":\"r2dbcQueryManipulation\",\"condition\":\"AND firstname IN('Aaron', 'Cathrin')\"}");
-        conditionWithConjunction              = r2dbcQueryManipulationWithConjunction.get("condition");
+        CONDITION_WITH_CONJUNCTION               = R2DBC_QUERY_MANIPULATION_WITH_CONJUCTION.get("condition");
     }
 
     @BeforeEach
@@ -126,8 +116,8 @@ class R2dbcAnnotationQueryManipulationEnforcementPointTest {
 
     @Test
     void when_thereAreConditionsInTheDecision_then_enforce() {
-        try (MockedConstruction<R2dbcQueryManipulationObligationProvider> r2dbcQueryManipulationObligationProviderMockedConstruction = Mockito
-                .mockConstruction(R2dbcQueryManipulationObligationProvider.class)) {
+        try (MockedConstruction<QueryManipulationObligationProvider> QueryManipulationObligationProviderMockedConstruction = Mockito
+                .mockConstruction(QueryManipulationObligationProvider.class)) {
             try (MockedConstruction<DataManipulationHandler> dataManipulationHandlerMockedConstruction = Mockito
                     .mockConstruction(DataManipulationHandler.class)) {
                 try (MockedConstruction<QueryManipulationExecutor> queryManipulationExecutorMockedConstruction = Mockito
@@ -138,22 +128,24 @@ class R2dbcAnnotationQueryManipulationEnforcementPointTest {
                             new ArrayList<>(List.of(int.class)), new ArrayList<>(List.of(30)), null);
                     var authSub                   = AuthorizationSubscription.of("subject", "permitTest", "resource",
                             "environment");
-                    var enforcementData           = new QueryManipulationEnforcementData<>(r2dbcMethodInvocationTest,
-                            beanFactoryMock, Person.class, pdpMock, authSub);
 
                     // WHEN
                     when(pdpMock.decide(any(AuthorizationSubscription.class)))
                             .thenReturn(Flux.just(new AuthorizationDecision(Decision.PERMIT)));
-                    queryAnnotationParameterResolverMockedStatic.when(() -> QueryAnnotationParameterResolver
-                            .resolveBoundedMethodParametersAndAnnotationParameters(any(Method.class),
-                                    any(Object[].class)))
+                    queryAnnotationParameterResolverMockedStatic
+                            .when(() -> QueryAnnotationParameterResolver
+                                    .resolveBoundedMethodParametersAndAnnotationParameters(any(Method.class),
+                                            any(Object[].class), any(Boolean.class)))
                             .thenReturn("SELECT * FROM testUser WHERE age > 30");
                     constraintHandlerUtilsMock
-                            .when(() -> ConstraintHandlerUtils.getAdvices(any(AuthorizationDecision.class)))
+                            .when(() -> ConstraintHandlerUtils.getAdvice(any(AuthorizationDecision.class)))
                             .thenReturn(JsonNodeFactory.instance.nullNode());
                     constraintHandlerUtilsMock
                             .when(() -> ConstraintHandlerUtils.getObligations(any(AuthorizationDecision.class)))
-                            .thenReturn(obligations);
+                            .thenReturn(OBLIGATIONS);
+
+                    var enforcementData = new QueryManipulationEnforcementData<>(r2dbcMethodInvocationTest,
+                            beanFactoryMock, Person.class, pdpMock, authSub);
 
                     var r2bcAnnotationQueryManipulationEnforcementPoint = new R2dbcAnnotationQueryManipulationEnforcementPoint<>(
                             enforcementData);
@@ -163,14 +155,14 @@ class R2dbcAnnotationQueryManipulationEnforcementPointTest {
                             .thenReturn(obligations -> malindaAsFlux);
                     when(dataManipulationHandler.toDomainObject()).thenReturn(obligations -> malinda);
 
-                    var r2dbcQueryManipulationObligationProviderMock = r2dbcQueryManipulationObligationProviderMockedConstruction
+                    var QueryManipulationObligationProviderMock = QueryManipulationObligationProviderMockedConstruction
                             .constructed().get(0);
-                    when(r2dbcQueryManipulationObligationProviderMock.isResponsible(any(JsonNode.class)))
+                    when(QueryManipulationObligationProviderMock.isResponsible(any(JsonNode.class), anyString()))
                             .thenReturn(Boolean.TRUE);
-                    when(r2dbcQueryManipulationObligationProviderMock.getObligation(any(JsonNode.class)))
-                            .thenReturn(r2dbcQueryManipulation);
-                    when(r2dbcQueryManipulationObligationProviderMock.getCondition(any(JsonNode.class)))
-                            .thenReturn(condition);
+                    when(QueryManipulationObligationProviderMock.getObligation(any(JsonNode.class), anyString()))
+                            .thenReturn(R2DBC_QUERY_MANIPULATION);
+                    when(QueryManipulationObligationProviderMock.getConditions(any(JsonNode.class)))
+                            .thenReturn(CONDITION);
 
                     var queryManipulationExecutor = queryManipulationExecutorMockedConstruction.constructed().get(0);
                     when(queryManipulationExecutor.execute(anyString(), eq(Person.class))).thenReturn(fluxMap);
@@ -180,16 +172,18 @@ class R2dbcAnnotationQueryManipulationEnforcementPointTest {
                     // THEN
                     StepVerifier.create(result).expectNext(malinda).expectComplete().verify();
 
-                    verify(r2dbcQueryManipulationObligationProviderMock, times(1)).isResponsible(obligations);
-                    verify(r2dbcQueryManipulationObligationProviderMock, times(1)).getObligation(obligations);
-                    verify(r2dbcQueryManipulationObligationProviderMock, times(1)).getCondition(r2dbcQueryManipulation);
-                    constraintHandlerUtilsMock.verify(
-                            () -> ConstraintHandlerUtils.getAdvices(any(AuthorizationDecision.class)), times(1));
+                    verify(QueryManipulationObligationProviderMock, times(1)).isResponsible(OBLIGATIONS,
+                            r2dbcQueryManipulationType);
+                    verify(QueryManipulationObligationProviderMock, times(1)).getObligation(OBLIGATIONS,
+                            r2dbcQueryManipulationType);
+                    verify(QueryManipulationObligationProviderMock, times(1)).getConditions(R2DBC_QUERY_MANIPULATION);
+                    constraintHandlerUtilsMock
+                            .verify(() -> ConstraintHandlerUtils.getAdvice(any(AuthorizationDecision.class)), times(1));
                     constraintHandlerUtilsMock.verify(
                             () -> ConstraintHandlerUtils.getObligations(any(AuthorizationDecision.class)), times(1));
                     queryAnnotationParameterResolverMockedStatic.verify(() -> QueryAnnotationParameterResolver
                             .resolveBoundedMethodParametersAndAnnotationParameters(any(Method.class),
-                                    any(Object[].class)),
+                                    any(Object[].class), any(Boolean.class)),
                             times(1));
                 }
             }
@@ -198,8 +192,8 @@ class R2dbcAnnotationQueryManipulationEnforcementPointTest {
 
     @Test
     void when_thereAreConditionsInTheDecisionButWithAnAndConjunction_then_enforce() {
-        try (MockedConstruction<R2dbcQueryManipulationObligationProvider> r2dbcQueryManipulationObligationProviderMockedConstruction = Mockito
-                .mockConstruction(R2dbcQueryManipulationObligationProvider.class)) {
+        try (MockedConstruction<QueryManipulationObligationProvider> QueryManipulationObligationProviderMockedConstruction = Mockito
+                .mockConstruction(QueryManipulationObligationProvider.class)) {
             try (MockedConstruction<DataManipulationHandler> dataManipulationHandlerMockedConstruction = Mockito
                     .mockConstruction(DataManipulationHandler.class)) {
                 try (MockedConstruction<QueryManipulationExecutor> queryManipulationExecutorMockedConstruction = Mockito
@@ -209,8 +203,6 @@ class R2dbcAnnotationQueryManipulationEnforcementPointTest {
                             new ArrayList<>(List.of(int.class, String.class)), new ArrayList<>(List.of(30, '2')), null);
                     var authSub                   = AuthorizationSubscription.of("subject", "permitTest", "resource",
                             "environment");
-                    var enforcementData           = new QueryManipulationEnforcementData<>(r2dbcMethodInvocationTest,
-                            beanFactoryMock, Person.class, pdpMock, authSub);
 
                     // WHEN
                     when(pdpMock.decide(any(AuthorizationSubscription.class)))
@@ -218,30 +210,34 @@ class R2dbcAnnotationQueryManipulationEnforcementPointTest {
                     queryAnnotationParameterResolverMockedStatic
                             .when(() -> QueryAnnotationParameterResolver
                                     .resolveBoundedMethodParametersAndAnnotationParameters(any(Method.class),
-                                            any(Object[].class)))
+                                            any(Object[].class), any(Boolean.class)))
                             .thenReturn("SELECT * FROM testUser WHERE age = 30 AND id = '2'");
                     constraintHandlerUtilsMock
-                            .when(() -> ConstraintHandlerUtils.getAdvices(any(AuthorizationDecision.class)))
+                            .when(() -> ConstraintHandlerUtils.getAdvice(any(AuthorizationDecision.class)))
                             .thenReturn(JsonNodeFactory.instance.nullNode());
                     constraintHandlerUtilsMock
                             .when(() -> ConstraintHandlerUtils.getObligations(any(AuthorizationDecision.class)))
-                            .thenReturn(obligations);
+                            .thenReturn(OBLIGATIONS);
+
+                    var enforcementData = new QueryManipulationEnforcementData<>(r2dbcMethodInvocationTest,
+                            beanFactoryMock, Person.class, pdpMock, authSub);
 
                     var r2bcAnnotationQueryManipulationEnforcementPoint = new R2dbcAnnotationQueryManipulationEnforcementPoint<>(
                             enforcementData);
 
                     var dataManipulationHandler = dataManipulationHandlerMockedConstruction.constructed().get(0);
-                    when(dataManipulationHandler.manipulate(obligations)).thenReturn(obligations -> Flux.just(malinda));
+                    when(dataManipulationHandler.manipulate(OBLIGATIONS)).thenReturn(obligations -> Flux.just(malinda));
                     when(dataManipulationHandler.toDomainObject()).thenCallRealMethod();
 
-                    var r2dbcQueryManipulationObligationProviderMock = r2dbcQueryManipulationObligationProviderMockedConstruction
+                    var QueryManipulationObligationProviderMock = QueryManipulationObligationProviderMockedConstruction
                             .constructed().get(0);
-                    when(r2dbcQueryManipulationObligationProviderMock.isResponsible(obligations))
+                    when(QueryManipulationObligationProviderMock.isResponsible(OBLIGATIONS, r2dbcQueryManipulationType))
                             .thenReturn(Boolean.TRUE);
-                    when(r2dbcQueryManipulationObligationProviderMock.getObligation(obligations))
-                            .thenReturn(r2dbcQueryManipulationWithConjunction);
-                    when(r2dbcQueryManipulationObligationProviderMock
-                            .getCondition(r2dbcQueryManipulationWithConjunction)).thenReturn(conditionWithConjunction);
+                    when(QueryManipulationObligationProviderMock.getObligation(OBLIGATIONS, r2dbcQueryManipulationType))
+                            .thenReturn(R2DBC_QUERY_MANIPULATION_WITH_CONJUCTION);
+                    when(QueryManipulationObligationProviderMock
+                            .getConditions(R2DBC_QUERY_MANIPULATION_WITH_CONJUCTION))
+                            .thenReturn(CONDITION_WITH_CONJUNCTION);
 
                     var queryManipulationExecutor = queryManipulationExecutorMockedConstruction.constructed().get(0);
                     when(queryManipulationExecutor.execute(anyString(), eq(Person.class))).thenReturn(fluxMap);
@@ -251,17 +247,19 @@ class R2dbcAnnotationQueryManipulationEnforcementPointTest {
                     // THEN
                     StepVerifier.create(result).expectNext(malinda).expectComplete().verify();
 
-                    verify(r2dbcQueryManipulationObligationProviderMock, times(1)).isResponsible(obligations);
-                    verify(r2dbcQueryManipulationObligationProviderMock, times(1)).getObligation(obligations);
-                    verify(r2dbcQueryManipulationObligationProviderMock, times(1))
-                            .getCondition(r2dbcQueryManipulationWithConjunction);
-                    constraintHandlerUtilsMock.verify(
-                            () -> ConstraintHandlerUtils.getAdvices(any(AuthorizationDecision.class)), times(1));
+                    verify(QueryManipulationObligationProviderMock, times(1)).isResponsible(OBLIGATIONS,
+                            r2dbcQueryManipulationType);
+                    verify(QueryManipulationObligationProviderMock, times(1)).getObligation(OBLIGATIONS,
+                            r2dbcQueryManipulationType);
+                    verify(QueryManipulationObligationProviderMock, times(1))
+                            .getConditions(R2DBC_QUERY_MANIPULATION_WITH_CONJUCTION);
+                    constraintHandlerUtilsMock
+                            .verify(() -> ConstraintHandlerUtils.getAdvice(any(AuthorizationDecision.class)), times(1));
                     constraintHandlerUtilsMock.verify(
                             () -> ConstraintHandlerUtils.getObligations(any(AuthorizationDecision.class)), times(1));
                     queryAnnotationParameterResolverMockedStatic.verify(() -> QueryAnnotationParameterResolver
                             .resolveBoundedMethodParametersAndAnnotationParameters(any(Method.class),
-                                    any(Object[].class)),
+                                    any(Object[].class), any(Boolean.class)),
                             times(1));
                 }
             }
@@ -289,7 +287,7 @@ class R2dbcAnnotationQueryManipulationEnforcementPointTest {
         // THEN
         StepVerifier.create(accessDeniedException).expectError(AccessDeniedException.class).verify();
 
-        constraintHandlerUtilsMock.verify(() -> ConstraintHandlerUtils.getAdvices(any(AuthorizationDecision.class)),
+        constraintHandlerUtilsMock.verify(() -> ConstraintHandlerUtils.getAdvice(any(AuthorizationDecision.class)),
                 times(1));
         constraintHandlerUtilsMock.verify(() -> ConstraintHandlerUtils.getObligations(any(AuthorizationDecision.class)),
                 times(0));
@@ -297,8 +295,8 @@ class R2dbcAnnotationQueryManipulationEnforcementPointTest {
 
     @Test
     void when_r2dbcQueryManipulationObligationIsResponsibleIsFalse_then_proceedWithoutQueryManipulation() {
-        try (MockedConstruction<R2dbcQueryManipulationObligationProvider> r2dbcQueryManipulationObligationProviderMockedConstruction = Mockito
-                .mockConstruction(R2dbcQueryManipulationObligationProvider.class)) {
+        try (MockedConstruction<QueryManipulationObligationProvider> QueryManipulationObligationProviderMockedConstruction = Mockito
+                .mockConstruction(QueryManipulationObligationProvider.class)) {
             try (MockedConstruction<DataManipulationHandler> dataManipulationHandler = Mockito
                     .mockConstruction(DataManipulationHandler.class)) {
                 try (MockedConstruction<QueryManipulationExecutor> queryManipulationExecutorMockedConstruction = Mockito
@@ -309,8 +307,6 @@ class R2dbcAnnotationQueryManipulationEnforcementPointTest {
                             new ArrayList<>(List.of(int.class, String.class)), new ArrayList<>(List.of(30, '2')), null);
                     var authSub                   = AuthorizationSubscription.of("subject", "permitTest", "resource",
                             "environment");
-                    var enforcementData           = new QueryManipulationEnforcementData<>(r2dbcMethodInvocationTest,
-                            beanFactoryMock, Person.class, pdpMock, authSub);
                     var expectedQuery             = "SELECT * FROM testUser WHERE age = 30 AND id = '2'";
 
                     // WHEN
@@ -318,26 +314,29 @@ class R2dbcAnnotationQueryManipulationEnforcementPointTest {
                             .thenReturn(Flux.just(new AuthorizationDecision(Decision.PERMIT)));
                     queryAnnotationParameterResolverMockedStatic.when(() -> QueryAnnotationParameterResolver
                             .resolveBoundedMethodParametersAndAnnotationParameters(any(Method.class),
-                                    any(Object[].class)))
+                                    any(Object[].class), any(Boolean.class)))
                             .thenReturn(expectedQuery);
                     constraintHandlerUtilsMock
-                            .when(() -> ConstraintHandlerUtils.getAdvices(any(AuthorizationDecision.class)))
+                            .when(() -> ConstraintHandlerUtils.getAdvice(any(AuthorizationDecision.class)))
                             .thenReturn(JsonNodeFactory.instance.nullNode());
                     constraintHandlerUtilsMock
                             .when(() -> ConstraintHandlerUtils.getObligations(any(AuthorizationDecision.class)))
-                            .thenReturn(obligations);
+                            .thenReturn(OBLIGATIONS);
+
+                    var enforcementData = new QueryManipulationEnforcementData<>(r2dbcMethodInvocationTest,
+                            beanFactoryMock, Person.class, pdpMock, authSub);
 
                     var r2bcAnnotationQueryManipulationEnforcementPoint = new R2dbcAnnotationQueryManipulationEnforcementPoint<>(
                             enforcementData);
 
-                    when(dataManipulationHandler.constructed().get(0).manipulate(obligations))
+                    when(dataManipulationHandler.constructed().get(0).manipulate(OBLIGATIONS))
                             .thenReturn(obligations -> malindaAsFlux);
                     when(dataManipulationHandler.constructed().get(0).toDomainObject())
                             .thenReturn(obligations -> malinda);
 
-                    var r2dbcQueryManipulationObligationProviderMock = r2dbcQueryManipulationObligationProviderMockedConstruction
+                    var QueryManipulationObligationProviderMock = QueryManipulationObligationProviderMockedConstruction
                             .constructed().get(0);
-                    when(r2dbcQueryManipulationObligationProviderMock.isResponsible(obligations))
+                    when(QueryManipulationObligationProviderMock.isResponsible(OBLIGATIONS, r2dbcQueryManipulationType))
                             .thenReturn(Boolean.FALSE);
 
                     var result = r2bcAnnotationQueryManipulationEnforcementPoint.enforce();
@@ -346,16 +345,18 @@ class R2dbcAnnotationQueryManipulationEnforcementPointTest {
                     StepVerifier.create(result).expectNext(malinda).expectComplete().verify();
 
                     verifyNoMoreInteractions(r2dbcEntityTemplateMock.getDatabaseClient());
-                    verify(r2dbcQueryManipulationObligationProviderMock, times(1)).isResponsible(obligations);
-                    verify(r2dbcQueryManipulationObligationProviderMock, times(0)).getObligation(obligations);
-                    verify(r2dbcQueryManipulationObligationProviderMock, times(0)).getCondition(r2dbcQueryManipulation);
-                    constraintHandlerUtilsMock.verify(
-                            () -> ConstraintHandlerUtils.getAdvices(any(AuthorizationDecision.class)), times(1));
+                    verify(QueryManipulationObligationProviderMock, times(1)).isResponsible(OBLIGATIONS,
+                            r2dbcQueryManipulationType);
+                    verify(QueryManipulationObligationProviderMock, times(0)).getObligation(OBLIGATIONS,
+                            r2dbcQueryManipulationType);
+                    verify(QueryManipulationObligationProviderMock, times(0)).getConditions(R2DBC_QUERY_MANIPULATION);
+                    constraintHandlerUtilsMock
+                            .verify(() -> ConstraintHandlerUtils.getAdvice(any(AuthorizationDecision.class)), times(1));
                     constraintHandlerUtilsMock.verify(
                             () -> ConstraintHandlerUtils.getObligations(any(AuthorizationDecision.class)), times(1));
                     queryAnnotationParameterResolverMockedStatic.verify(() -> QueryAnnotationParameterResolver
                             .resolveBoundedMethodParametersAndAnnotationParameters(any(Method.class),
-                                    any(Object[].class)),
+                                    any(Object[].class), any(Boolean.class)),
                             times(1));
                 }
             }
@@ -364,8 +365,8 @@ class R2dbcAnnotationQueryManipulationEnforcementPointTest {
 
     @Test
     void when_r2dbcQueryManipulationObligationIsResponsibleIsFalseAndReturnTypeIsMono_then_proceedWithoutQueryManipulation() {
-        try (MockedConstruction<R2dbcQueryManipulationObligationProvider> r2dbcQueryManipulationObligationProviderMockedConstruction = Mockito
-                .mockConstruction(R2dbcQueryManipulationObligationProvider.class)) {
+        try (MockedConstruction<QueryManipulationObligationProvider> QueryManipulationObligationProviderMockedConstruction = Mockito
+                .mockConstruction(QueryManipulationObligationProvider.class)) {
             try (MockedConstruction<DataManipulationHandler> dataManipulationHandler = Mockito
                     .mockConstruction(DataManipulationHandler.class)) {
                 try (MockedConstruction<QueryManipulationExecutor> queryManipulationExecutorMockedConstruction = Mockito
@@ -376,8 +377,6 @@ class R2dbcAnnotationQueryManipulationEnforcementPointTest {
                             Mono.just(malinda));
                     var authSub                   = AuthorizationSubscription.of("subject", "permitTest", "resource",
                             "environment");
-                    var enforcementData           = new QueryManipulationEnforcementData<>(r2dbcMethodInvocationTest,
-                            beanFactoryMock, Person.class, pdpMock, authSub);
                     var expectedQuery             = "SELECT * FROM testUser WHERE age = 30 AND id = '2'";
 
                     // WHEN
@@ -385,26 +384,29 @@ class R2dbcAnnotationQueryManipulationEnforcementPointTest {
                             .thenReturn(Flux.just(new AuthorizationDecision(Decision.PERMIT)));
                     queryAnnotationParameterResolverMockedStatic.when(() -> QueryAnnotationParameterResolver
                             .resolveBoundedMethodParametersAndAnnotationParameters(any(Method.class),
-                                    any(Object[].class)))
+                                    any(Object[].class), any(Boolean.class)))
                             .thenReturn(expectedQuery);
                     constraintHandlerUtilsMock
-                            .when(() -> ConstraintHandlerUtils.getAdvices(any(AuthorizationDecision.class)))
+                            .when(() -> ConstraintHandlerUtils.getAdvice(any(AuthorizationDecision.class)))
                             .thenReturn(JsonNodeFactory.instance.nullNode());
                     constraintHandlerUtilsMock
                             .when(() -> ConstraintHandlerUtils.getObligations(any(AuthorizationDecision.class)))
-                            .thenReturn(obligations);
+                            .thenReturn(OBLIGATIONS);
+
+                    var enforcementData = new QueryManipulationEnforcementData<>(r2dbcMethodInvocationTest,
+                            beanFactoryMock, Person.class, pdpMock, authSub);
 
                     var r2bcAnnotationQueryManipulationEnforcementPoint = new R2dbcAnnotationQueryManipulationEnforcementPoint<>(
                             enforcementData);
 
-                    when(dataManipulationHandler.constructed().get(0).manipulate(obligations))
+                    when(dataManipulationHandler.constructed().get(0).manipulate(OBLIGATIONS))
                             .thenReturn(obligations -> malindaAsFlux);
                     when(dataManipulationHandler.constructed().get(0).toDomainObject())
                             .thenReturn(obligations -> malinda);
 
-                    var r2dbcQueryManipulationObligationProviderMock = r2dbcQueryManipulationObligationProviderMockedConstruction
+                    var QueryManipulationObligationProviderMock = QueryManipulationObligationProviderMockedConstruction
                             .constructed().get(0);
-                    when(r2dbcQueryManipulationObligationProviderMock.isResponsible(obligations))
+                    when(QueryManipulationObligationProviderMock.isResponsible(OBLIGATIONS, r2dbcQueryManipulationType))
                             .thenReturn(Boolean.FALSE);
 
                     var result = r2bcAnnotationQueryManipulationEnforcementPoint.enforce();
@@ -412,16 +414,18 @@ class R2dbcAnnotationQueryManipulationEnforcementPointTest {
                     // THEN
                     StepVerifier.create(result).expectNext(malinda).expectComplete().verify();
 
-                    verify(r2dbcQueryManipulationObligationProviderMock, times(1)).isResponsible(obligations);
-                    verify(r2dbcQueryManipulationObligationProviderMock, times(0)).getObligation(obligations);
-                    verify(r2dbcQueryManipulationObligationProviderMock, times(0)).getCondition(r2dbcQueryManipulation);
-                    constraintHandlerUtilsMock.verify(
-                            () -> ConstraintHandlerUtils.getAdvices(any(AuthorizationDecision.class)), times(1));
+                    verify(QueryManipulationObligationProviderMock, times(1)).isResponsible(OBLIGATIONS,
+                            r2dbcQueryManipulationType);
+                    verify(QueryManipulationObligationProviderMock, times(0)).getObligation(OBLIGATIONS,
+                            r2dbcQueryManipulationType);
+                    verify(QueryManipulationObligationProviderMock, times(0)).getConditions(R2DBC_QUERY_MANIPULATION);
+                    constraintHandlerUtilsMock
+                            .verify(() -> ConstraintHandlerUtils.getAdvice(any(AuthorizationDecision.class)), times(1));
                     constraintHandlerUtilsMock.verify(
                             () -> ConstraintHandlerUtils.getObligations(any(AuthorizationDecision.class)), times(1));
                     queryAnnotationParameterResolverMockedStatic.verify(() -> QueryAnnotationParameterResolver
                             .resolveBoundedMethodParametersAndAnnotationParameters(any(Method.class),
-                                    any(Object[].class)),
+                                    any(Object[].class), any(Boolean.class)),
                             times(1));
                 }
             }
@@ -430,8 +434,8 @@ class R2dbcAnnotationQueryManipulationEnforcementPointTest {
 
     @Test
     void when_mongoQueryManipulationObligationIsResponsibleIsFalseAndReturnTypeIsMono_then_throwThrowable() {
-        try (MockedConstruction<R2dbcQueryManipulationObligationProvider> r2dbcQueryManipulationObligationProviderMockedConstruction = Mockito
-                .mockConstruction(R2dbcQueryManipulationObligationProvider.class)) {
+        try (MockedConstruction<QueryManipulationObligationProvider> QueryManipulationObligationProviderMockedConstruction = Mockito
+                .mockConstruction(QueryManipulationObligationProvider.class)) {
             try (MockedConstruction<DataManipulationHandler> dataManipulationHandler = Mockito
                     .mockConstruction(DataManipulationHandler.class)) {
                 try (MockedConstruction<QueryManipulationExecutor> queryManipulationExecutorMockedConstruction = Mockito
@@ -443,35 +447,37 @@ class R2dbcAnnotationQueryManipulationEnforcementPointTest {
                             new Throwable());
                     var authSub                   = AuthorizationSubscription.of("subject", "permitTest", "resource",
                             "environment");
-                    var enforcementData           = new QueryManipulationEnforcementData<>(r2dbcMethodInvocationTest,
-                            beanFactoryMock, Person.class, pdpMock, authSub);
-                    var expectedQuery             = "SELECT * FROM testUser WHERE age = 30 AND id = '2'";
+
+                    var expectedQuery = "SELECT * FROM testUser WHERE age = 30 AND id = '2'";
 
                     // WHEN
                     when(pdpMock.decide(any(AuthorizationSubscription.class)))
                             .thenReturn(Flux.just(new AuthorizationDecision(Decision.PERMIT)));
                     queryAnnotationParameterResolverMockedStatic.when(() -> QueryAnnotationParameterResolver
                             .resolveBoundedMethodParametersAndAnnotationParameters(any(Method.class),
-                                    any(Object[].class)))
+                                    any(Object[].class), any(Boolean.class)))
                             .thenReturn(expectedQuery);
                     constraintHandlerUtilsMock
-                            .when(() -> ConstraintHandlerUtils.getAdvices(any(AuthorizationDecision.class)))
+                            .when(() -> ConstraintHandlerUtils.getAdvice(any(AuthorizationDecision.class)))
                             .thenReturn(JsonNodeFactory.instance.nullNode());
                     constraintHandlerUtilsMock
                             .when(() -> ConstraintHandlerUtils.getObligations(any(AuthorizationDecision.class)))
-                            .thenReturn(obligations);
+                            .thenReturn(OBLIGATIONS);
+
+                    var enforcementData = new QueryManipulationEnforcementData<>(r2dbcMethodInvocationTest,
+                            beanFactoryMock, Person.class, pdpMock, authSub);
 
                     var r2bcAnnotationQueryManipulationEnforcementPoint = new R2dbcAnnotationQueryManipulationEnforcementPoint<>(
                             enforcementData);
 
-                    when(dataManipulationHandler.constructed().get(0).manipulate(obligations))
+                    when(dataManipulationHandler.constructed().get(0).manipulate(OBLIGATIONS))
                             .thenReturn(obligations -> malindaAsFlux);
                     when(dataManipulationHandler.constructed().get(0).toDomainObject())
                             .thenReturn(obligations -> malinda);
 
-                    var r2dbcQueryManipulationObligationProviderMock = r2dbcQueryManipulationObligationProviderMockedConstruction
+                    var QueryManipulationObligationProviderMock = QueryManipulationObligationProviderMockedConstruction
                             .constructed().get(0);
-                    when(r2dbcQueryManipulationObligationProviderMock.isResponsible(obligations))
+                    when(QueryManipulationObligationProviderMock.isResponsible(OBLIGATIONS, r2dbcQueryManipulationType))
                             .thenReturn(Boolean.FALSE);
 
                     var throwableException = r2bcAnnotationQueryManipulationEnforcementPoint.enforce();
@@ -479,16 +485,18 @@ class R2dbcAnnotationQueryManipulationEnforcementPointTest {
                     // THEN
                     StepVerifier.create(throwableException).expectError(Throwable.class).verify();
 
-                    verify(r2dbcQueryManipulationObligationProviderMock, times(1)).isResponsible(obligations);
-                    verify(r2dbcQueryManipulationObligationProviderMock, times(0)).getObligation(obligations);
-                    verify(r2dbcQueryManipulationObligationProviderMock, times(0)).getCondition(r2dbcQueryManipulation);
-                    constraintHandlerUtilsMock.verify(
-                            () -> ConstraintHandlerUtils.getAdvices(any(AuthorizationDecision.class)), times(1));
+                    verify(QueryManipulationObligationProviderMock, times(1)).isResponsible(OBLIGATIONS,
+                            r2dbcQueryManipulationType);
+                    verify(QueryManipulationObligationProviderMock, times(0)).getObligation(OBLIGATIONS,
+                            r2dbcQueryManipulationType);
+                    verify(QueryManipulationObligationProviderMock, times(0)).getConditions(R2DBC_QUERY_MANIPULATION);
+                    constraintHandlerUtilsMock
+                            .verify(() -> ConstraintHandlerUtils.getAdvice(any(AuthorizationDecision.class)), times(1));
                     constraintHandlerUtilsMock.verify(
                             () -> ConstraintHandlerUtils.getObligations(any(AuthorizationDecision.class)), times(1));
                     queryAnnotationParameterResolverMockedStatic.verify(() -> QueryAnnotationParameterResolver
                             .resolveBoundedMethodParametersAndAnnotationParameters(any(Method.class),
-                                    any(Object[].class)),
+                                    any(Object[].class), any(Boolean.class)),
                             times(1));
                 }
             }
@@ -497,8 +505,8 @@ class R2dbcAnnotationQueryManipulationEnforcementPointTest {
 
     @Test
     void when_thereAreConditionsInTheDecisionButNoWhereClauseInOriginalQuery_then_enforce() {
-        try (MockedConstruction<R2dbcQueryManipulationObligationProvider> r2dbcQueryManipulationObligationProviderMockedConstruction = Mockito
-                .mockConstruction(R2dbcQueryManipulationObligationProvider.class)) {
+        try (MockedConstruction<QueryManipulationObligationProvider> QueryManipulationObligationProviderMockedConstruction = Mockito
+                .mockConstruction(QueryManipulationObligationProvider.class)) {
             try (MockedConstruction<DataManipulationHandler> dataManipulationHandlerMockedConstruction = Mockito
                     .mockConstruction(DataManipulationHandler.class)) {
                 try (MockedConstruction<QueryManipulationExecutor> queryManipulationExecutorMockedConstruction = Mockito
@@ -509,22 +517,24 @@ class R2dbcAnnotationQueryManipulationEnforcementPointTest {
                             new ArrayList<>(), new ArrayList<>(), null);
                     var authSub                   = AuthorizationSubscription.of("subject", "permitTest", "resource",
                             "environment");
-                    var enforcementData           = new QueryManipulationEnforcementData<>(r2dbcMethodInvocationTest,
-                            beanFactoryMock, Person.class, pdpMock, authSub);
 
                     // WHEN
                     when(pdpMock.decide(any(AuthorizationSubscription.class)))
                             .thenReturn(Flux.just(new AuthorizationDecision(Decision.PERMIT)));
-                    queryAnnotationParameterResolverMockedStatic.when(() -> QueryAnnotationParameterResolver
-                            .resolveBoundedMethodParametersAndAnnotationParameters(any(Method.class),
-                                    any(Object[].class)))
+                    queryAnnotationParameterResolverMockedStatic
+                            .when(() -> QueryAnnotationParameterResolver
+                                    .resolveBoundedMethodParametersAndAnnotationParameters(any(Method.class),
+                                            any(Object[].class), any(Boolean.class)))
                             .thenReturn("SELECT * FROM testUser");
                     constraintHandlerUtilsMock
-                            .when(() -> ConstraintHandlerUtils.getAdvices(any(AuthorizationDecision.class)))
+                            .when(() -> ConstraintHandlerUtils.getAdvice(any(AuthorizationDecision.class)))
                             .thenReturn(JsonNodeFactory.instance.nullNode());
                     constraintHandlerUtilsMock
                             .when(() -> ConstraintHandlerUtils.getObligations(any(AuthorizationDecision.class)))
-                            .thenReturn(obligations);
+                            .thenReturn(OBLIGATIONS);
+
+                    var enforcementData = new QueryManipulationEnforcementData<>(r2dbcMethodInvocationTest,
+                            beanFactoryMock, Person.class, pdpMock, authSub);
 
                     var r2bcAnnotationQueryManipulationEnforcementPoint = new R2dbcAnnotationQueryManipulationEnforcementPoint<>(
                             enforcementData);
@@ -534,14 +544,14 @@ class R2dbcAnnotationQueryManipulationEnforcementPointTest {
                             .thenReturn(obligations -> malindaAsFlux);
                     when(dataManipulationHandler.toDomainObject()).thenReturn(obligations -> malinda);
 
-                    var r2dbcQueryManipulationObligationProviderMock = r2dbcQueryManipulationObligationProviderMockedConstruction
+                    var QueryManipulationObligationProviderMock = QueryManipulationObligationProviderMockedConstruction
                             .constructed().get(0);
-                    when(r2dbcQueryManipulationObligationProviderMock.isResponsible(any(JsonNode.class)))
+                    when(QueryManipulationObligationProviderMock.isResponsible(any(JsonNode.class), anyString()))
                             .thenReturn(Boolean.TRUE);
-                    when(r2dbcQueryManipulationObligationProviderMock.getObligation(any(JsonNode.class)))
-                            .thenReturn(r2dbcQueryManipulation);
-                    when(r2dbcQueryManipulationObligationProviderMock.getCondition(any(JsonNode.class)))
-                            .thenReturn(condition);
+                    when(QueryManipulationObligationProviderMock.getObligation(any(JsonNode.class), anyString()))
+                            .thenReturn(R2DBC_QUERY_MANIPULATION);
+                    when(QueryManipulationObligationProviderMock.getConditions(any(JsonNode.class)))
+                            .thenReturn(CONDITION);
 
                     var queryManipulationExecutor = queryManipulationExecutorMockedConstruction.constructed().get(0);
                     when(queryManipulationExecutor.execute(anyString(), eq(Person.class))).thenReturn(fluxMap);
@@ -551,16 +561,18 @@ class R2dbcAnnotationQueryManipulationEnforcementPointTest {
                     // THEN
                     StepVerifier.create(result).expectNext(malinda).expectComplete().verify();
 
-                    verify(r2dbcQueryManipulationObligationProviderMock, times(1)).isResponsible(obligations);
-                    verify(r2dbcQueryManipulationObligationProviderMock, times(1)).getObligation(obligations);
-                    verify(r2dbcQueryManipulationObligationProviderMock, times(1)).getCondition(r2dbcQueryManipulation);
-                    constraintHandlerUtilsMock.verify(
-                            () -> ConstraintHandlerUtils.getAdvices(any(AuthorizationDecision.class)), times(1));
+                    verify(QueryManipulationObligationProviderMock, times(1)).isResponsible(OBLIGATIONS,
+                            r2dbcQueryManipulationType);
+                    verify(QueryManipulationObligationProviderMock, times(1)).getObligation(OBLIGATIONS,
+                            r2dbcQueryManipulationType);
+                    verify(QueryManipulationObligationProviderMock, times(1)).getConditions(R2DBC_QUERY_MANIPULATION);
+                    constraintHandlerUtilsMock
+                            .verify(() -> ConstraintHandlerUtils.getAdvice(any(AuthorizationDecision.class)), times(1));
                     constraintHandlerUtilsMock.verify(
                             () -> ConstraintHandlerUtils.getObligations(any(AuthorizationDecision.class)), times(1));
                     queryAnnotationParameterResolverMockedStatic.verify(() -> QueryAnnotationParameterResolver
                             .resolveBoundedMethodParametersAndAnnotationParameters(any(Method.class),
-                                    any(Object[].class)),
+                                    any(Object[].class), any(Boolean.class)),
                             times(1));
                 }
             }

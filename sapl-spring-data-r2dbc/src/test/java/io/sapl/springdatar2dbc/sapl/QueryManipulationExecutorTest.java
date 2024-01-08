@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2023 Dominic Heutelbeck (dominic@heutelbeck.com)
+ * Copyright (C) 2017-2024 Dominic Heutelbeck (dominic@heutelbeck.com)
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -43,14 +43,14 @@ class QueryManipulationExecutorTest {
     @Mock(answer = Answers.RETURNS_DEEP_STUBS)
     R2dbcEntityTemplate r2dbcEntityTemplateMock;
 
-    Map<String, Object> userHashMap = Map.of("1", new Person(123, "Cathrin", "Second", 32, Role.ADMIN, Boolean.TRUE));
+    Map<String, Object> userHashMap = Map.of("1", new Person(123, "Cathrin", "Second", 32, Role.ADMIN, true));
 
     @Test
     void when_r2dbcEntityTemplateWasFoundAndQueryContainsWHERE_then_executeQuery() {
         // GIVEN
         var beanFactoryMock = mock(BeanFactory.class);
         var query           = "SELECT * FROM person WHERE firstname = 'Melinda'";
-        var cathrin         = new Person(123, "Cathrin", "Second", 32, Role.ADMIN, Boolean.TRUE);
+        var cathrin         = new Person(123, "Cathrin", "Second", 32, Role.ADMIN, true);
         var userHashMap     = new HashMap<String, Object>();
         userHashMap.put("1", cathrin);
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2023 Dominic Heutelbeck (dominic@heutelbeck.com)
+ * Copyright (C) 2017-2024 Dominic Heutelbeck (dominic@heutelbeck.com)
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -17,31 +17,30 @@
  */
 package io.sapl.springdatar2dbc.sapl;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+
 import java.util.ArrayList;
 import java.util.List;
 
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockedConstruction;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.BeanFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
 import io.sapl.api.pdp.AuthorizationSubscription;
 import io.sapl.pdp.EmbeddedPolicyDecisionPoint;
+import io.sapl.springdatacommon.sapl.QueryManipulationEnforcementData;
+import io.sapl.springdatacommon.sapl.queries.enforcement.ProceededDataFilterEnforcementPoint;
 import io.sapl.springdatar2dbc.database.MethodInvocationForTesting;
 import io.sapl.springdatar2dbc.database.Person;
-import io.sapl.springdatar2dbc.sapl.queries.enforcement.ProceededDataFilterEnforcementPoint;
 import io.sapl.springdatar2dbc.sapl.queries.enforcement.R2dbcAnnotationQueryManipulationEnforcementPoint;
 import io.sapl.springdatar2dbc.sapl.queries.enforcement.R2dbcMethodNameQueryManipulationEnforcementPoint;
 
-@SpringBootTest
+@SpringBootTest(classes = QueryManipulationEnforcementPointFactory.class)
 class QueryManipulationEnforcementPointFactoryTest {
-
-    @Autowired
-    QueryManipulationEnforcementPointFactory queryManipulationEnforcementPointFactory;
 
     @Mock
     BeanFactory beanFactoryMock;
@@ -56,6 +55,8 @@ class QueryManipulationEnforcementPointFactoryTest {
         MockedConstruction<R2dbcAnnotationQueryManipulationEnforcementPoint> mongoAnnotationQueryManipulationEnforcementPointMockedConstruction = Mockito
                 .mockConstruction(R2dbcAnnotationQueryManipulationEnforcementPoint.class)) {
 
+            QueryManipulationEnforcementPointFactory queryManipulationEnforcementPointFactory = new QueryManipulationEnforcementPointFactory();
+
             // GIVEN
             var methodInvocationMock = new MethodInvocationForTesting("findAllByFirstname",
                     new ArrayList<>(List.of(String.class)), null, null);
@@ -68,9 +69,8 @@ class QueryManipulationEnforcementPointFactoryTest {
                     .createR2dbcAnnotationQueryManipulationEnforcementPoint(enforcementData);
 
             // THEN
-            Assertions.assertNotNull(
-                    mongoAnnotationQueryManipulationEnforcementPointMockedConstruction.constructed().get(0));
-            Assertions.assertEquals(result.getClass(), R2dbcAnnotationQueryManipulationEnforcementPoint.class);
+            assertNotNull(mongoAnnotationQueryManipulationEnforcementPointMockedConstruction.constructed().get(0));
+            assertEquals(result.getClass(), R2dbcAnnotationQueryManipulationEnforcementPoint.class);
         }
     }
 
@@ -80,6 +80,7 @@ class QueryManipulationEnforcementPointFactoryTest {
         try (@SuppressWarnings("rawtypes")
         MockedConstruction<R2dbcMethodNameQueryManipulationEnforcementPoint> mongoMethodNameQueryManipulationEnforcementPointMockedConstruction = Mockito
                 .mockConstruction(R2dbcMethodNameQueryManipulationEnforcementPoint.class)) {
+            QueryManipulationEnforcementPointFactory queryManipulationEnforcementPointFactory = new QueryManipulationEnforcementPointFactory();
 
             // GIVEN
             var methodInvocationMock = new MethodInvocationForTesting("findAllByAge",
@@ -93,9 +94,8 @@ class QueryManipulationEnforcementPointFactoryTest {
                     .createR2dbcMethodNameQueryManipulationEnforcementPoint(enforcementData);
 
             // THEN
-            Assertions.assertNotNull(
-                    mongoMethodNameQueryManipulationEnforcementPointMockedConstruction.constructed().get(0));
-            Assertions.assertEquals(result.getClass(), R2dbcMethodNameQueryManipulationEnforcementPoint.class);
+            assertNotNull(mongoMethodNameQueryManipulationEnforcementPointMockedConstruction.constructed().get(0));
+            assertEquals(result.getClass(), R2dbcMethodNameQueryManipulationEnforcementPoint.class);
         }
     }
 
@@ -105,6 +105,7 @@ class QueryManipulationEnforcementPointFactoryTest {
         try (@SuppressWarnings("rawtypes")
         MockedConstruction<ProceededDataFilterEnforcementPoint> proceededDataFilterEnforcementPointMockedConstruction = Mockito
                 .mockConstruction(ProceededDataFilterEnforcementPoint.class)) {
+            QueryManipulationEnforcementPointFactory queryManipulationEnforcementPointFactory = new QueryManipulationEnforcementPointFactory();
 
             // GIVEN
             var methodInvocationMock = new MethodInvocationForTesting("methodTestWithAge",
@@ -118,8 +119,8 @@ class QueryManipulationEnforcementPointFactoryTest {
                     .createProceededDataFilterEnforcementPoint(enforcementData);
 
             // THEN
-            Assertions.assertNotNull(proceededDataFilterEnforcementPointMockedConstruction.constructed().get(0));
-            Assertions.assertEquals(result.getClass(), ProceededDataFilterEnforcementPoint.class);
+            assertNotNull(proceededDataFilterEnforcementPointMockedConstruction.constructed().get(0));
+            assertEquals(result.getClass(), ProceededDataFilterEnforcementPoint.class);
         }
     }
 }

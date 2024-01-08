@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2023 Dominic Heutelbeck (dominic@heutelbeck.com)
+ * Copyright (C) 2017-2024 Dominic Heutelbeck (dominic@heutelbeck.com)
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -17,9 +17,9 @@
  */
 package io.sapl.springdatamongoreactive.sapl.proxy;
 
-import static io.sapl.springdatamongoreactive.sapl.utils.Utilities.isFlux;
-import static io.sapl.springdatamongoreactive.sapl.utils.Utilities.isListOrCollection;
-import static io.sapl.springdatamongoreactive.sapl.utils.Utilities.isMono;
+import static io.sapl.springdatacommon.sapl.utils.Utilities.isFlux;
+import static io.sapl.springdatacommon.sapl.utils.Utilities.isListOrCollection;
+import static io.sapl.springdatacommon.sapl.utils.Utilities.isMono;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
@@ -30,16 +30,17 @@ import org.aopalliance.intercept.MethodInterceptor;
 import org.aopalliance.intercept.MethodInvocation;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.data.mongodb.repository.Query;
+import org.springframework.data.mongodb.repository.ReactiveMongoRepository;
 import org.springframework.stereotype.Service;
 
 import io.sapl.api.pdp.AuthorizationSubscription;
 import io.sapl.api.pdp.PolicyDecisionPoint;
-import io.sapl.springdatamongoreactive.sapl.Enforce;
-import io.sapl.springdatamongoreactive.sapl.QueryManipulationEnforcementData;
 import io.sapl.springdatamongoreactive.sapl.QueryManipulationEnforcementPointFactory;
-import io.sapl.springdatamongoreactive.sapl.SaplProtected;
-import io.sapl.springdatamongoreactive.sapl.handlers.AuthorizationSubscriptionHandlerProvider;
-import io.sapl.springdatamongoreactive.sapl.utils.Utilities;
+import io.sapl.springdatacommon.handlers.AuthorizationSubscriptionHandlerProvider;
+import io.sapl.springdatacommon.sapl.Enforce;
+import io.sapl.springdatacommon.sapl.QueryManipulationEnforcementData;
+import io.sapl.springdatacommon.sapl.SaplProtected;
+import io.sapl.springdatacommon.sapl.utils.Utilities;
 import lombok.SneakyThrows;
 import reactor.core.publisher.Flux;
 
@@ -70,6 +71,8 @@ public class MongoProxyInterceptor<T> implements MethodInterceptor {
     private final QueryManipulationEnforcementData<T>      enforcementData;
     private final QueryManipulationEnforcementPointFactory factory;
 
+    private static final String REACTIVE_MONGO_REPOSITORY_PATH = "org.springframework.data.mongodb.repository.ReactiveMongoRepository";
+
     public MongoProxyInterceptor(AuthorizationSubscriptionHandlerProvider authSubHandler, BeanFactory beanFactory,
             PolicyDecisionPoint pdp, QueryManipulationEnforcementPointFactory factory) {
         this.authSubHandler  = authSubHandler;
@@ -80,9 +83,8 @@ public class MongoProxyInterceptor<T> implements MethodInterceptor {
     @SneakyThrows
     public Object invoke(MethodInvocation methodInvocation) {
 
-        var      repositoryMethod = methodInvocation.getMethod();
-        var      repository       = methodInvocation.getMethod().getDeclaringClass();
-        Class<T> domainType       = null;
+        var repositoryMethod = methodInvocation.getMethod();
+        var repository       = methodInvocation.getMethod().getDeclaringClass();
 
         if (hasAnnotationSaplProtected(repository) || hasAnnotationSaplProtected(repositoryMethod)
                 || hasAnnotationEnforce(repositoryMethod)) {
@@ -95,7 +97,7 @@ public class MongoProxyInterceptor<T> implements MethodInterceptor {
                         "The Sapl implementation for the manipulation of the database queries was recognised, but no AuthorizationSubscription was found.");
             }
 
-            domainType = extractDomainType(repository);
+            var domainType = extractDomainType(repository);
 
             enforcementData.setMethodInvocation(methodInvocation);
             enforcementData.setDomainType(domainType);
@@ -155,17 +157,20 @@ public class MongoProxyInterceptor<T> implements MethodInterceptor {
     }
 
     @SuppressWarnings("unchecked")
-    private Class<T> extractDomainType(Class<?> repository) {
+    private Class<T> extractDomainType(Class<?> repository) throws ClassNotFoundException {
+
         Type[] repositoryTypes = repository.getGenericInterfaces();
 
-        if (repositoryTypes[0] instanceof ParameterizedType type
-                && type.getActualTypeArguments()[0] instanceof Class<?> clazz) {
-            return (Class<T>) clazz;
+        for (Type repositoryType : repositoryTypes) {
+            if (repositoryType.getTypeName().contains(REACTIVE_MONGO_REPOSITORY_PATH)
+                    && repositoryType instanceof ParameterizedType type
+                    && type.getActualTypeArguments()[0] instanceof Class<?> clazz) {
+                return (Class<T>) clazz;
+            }
         }
 
-        throw new ClassCastException("If the repository [" + repository
-                + "] implements several interfaces, the first interface must correspond to the "
-                + "reactive interface of Spring Data (R2dbcRepository, ReactiveCrudRepository). ");
+        throw new ClassNotFoundException(
+                "The " + ReactiveMongoRepository.class + " could not be found as an extension of the " + repository);
     }
 
     /**

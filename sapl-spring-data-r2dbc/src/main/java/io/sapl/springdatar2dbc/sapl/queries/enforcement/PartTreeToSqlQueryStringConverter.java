@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2023 Dominic Heutelbeck (dominic@heutelbeck.com)
+ * Copyright (C) 2017-2024 Dominic Heutelbeck (dominic@heutelbeck.com)
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -17,7 +17,7 @@
  */
 package io.sapl.springdatar2dbc.sapl.queries.enforcement;
 
-import static io.sapl.springdatar2dbc.sapl.utils.Utilities.isString;
+import static io.sapl.springdatacommon.sapl.utils.Utilities.isString;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -28,8 +28,8 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.repository.query.parser.Part;
 import org.springframework.data.repository.query.parser.PartTree;
 
-import io.sapl.springdatar2dbc.sapl.Operator;
-import io.sapl.springdatar2dbc.sapl.QueryManipulationEnforcementData;
+import io.sapl.springdatacommon.sapl.QueryManipulationEnforcementData;
+import io.sapl.springdatar2dbc.sapl.OperatorR2dbc;
 import lombok.SneakyThrows;
 import lombok.experimental.UtilityClass;
 
@@ -182,7 +182,7 @@ public class PartTreeToSqlQueryStringConverter {
      */
     @SneakyThrows
     private <T> SqlCondition and(Part part, Object argument, Class<T> domainType) {
-        var operator  = Operator.valueOf(part.getType().name());
+        var operator  = OperatorR2dbc.valueOf(part.getType().name());
         var fieldType = domainType.getDeclaredField(part.getProperty().toDotPath()).getType();
 
         if (isString(fieldType) && operator.isArray()) {

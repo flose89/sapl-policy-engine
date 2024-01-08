@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2023 Dominic Heutelbeck (dominic@heutelbeck.com)
+ * Copyright (C) 2017-2024 Dominic Heutelbeck (dominic@heutelbeck.com)
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -30,12 +30,12 @@ import org.springframework.stereotype.Service;
 
 import io.sapl.api.pdp.AuthorizationSubscription;
 import io.sapl.api.pdp.PolicyDecisionPoint;
-import io.sapl.springdatar2dbc.sapl.Enforce;
-import io.sapl.springdatar2dbc.sapl.QueryManipulationEnforcementData;
+import io.sapl.springdatacommon.handlers.AuthorizationSubscriptionHandlerProvider;
+import io.sapl.springdatacommon.sapl.Enforce;
+import io.sapl.springdatacommon.sapl.QueryManipulationEnforcementData;
+import io.sapl.springdatacommon.sapl.SaplProtected;
+import io.sapl.springdatacommon.sapl.utils.Utilities;
 import io.sapl.springdatar2dbc.sapl.QueryManipulationEnforcementPointFactory;
-import io.sapl.springdatar2dbc.sapl.SaplProtected;
-import io.sapl.springdatar2dbc.sapl.handlers.AuthorizationSubscriptionHandlerProvider;
-import io.sapl.springdatar2dbc.sapl.utils.Utilities;
 import lombok.SneakyThrows;
 import reactor.core.publisher.Flux;
 
@@ -70,7 +70,7 @@ public class R2dbcProxyInterceptor<T> implements MethodInterceptor {
             PolicyDecisionPoint pdp, QueryManipulationEnforcementPointFactory factory) {
         this.authSubHandler  = authSubHandler;
         this.factory         = factory;
-        this.enforcementData = new QueryManipulationEnforcementData<T>(null, beanFactory, null, pdp, null);
+        this.enforcementData = new QueryManipulationEnforcementData<>(null, beanFactory, null, pdp, null);
     }
 
     @SneakyThrows
@@ -171,10 +171,9 @@ public class R2dbcProxyInterceptor<T> implements MethodInterceptor {
     private Class<T> extractDomainType(Class<?> repository) {
         Type[] repositoryTypes = repository.getGenericInterfaces();
 
-        if (repositoryTypes[0] instanceof ParameterizedType type) {
-            if (type.getActualTypeArguments()[0] instanceof Class clazz) {
-                return (Class<T>) clazz;
-            }
+        if (repositoryTypes[0] instanceof ParameterizedType type
+                && type.getActualTypeArguments()[0] instanceof Class<?> clazz) {
+            return (Class<T>) clazz;
         }
 
         throw new ClassCastException("If the repository [" + repository

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2023 Dominic Heutelbeck (dominic@heutelbeck.com)
+ * Copyright (C) 2017-2024 Dominic Heutelbeck (dominic@heutelbeck.com)
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -19,6 +19,7 @@ package io.sapl.springdatamongoreactive.sapl.queries.enforcement;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -33,7 +34,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
-import org.mockito.Mockito;
 import org.springframework.security.access.AccessDeniedException;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -44,12 +44,13 @@ import io.sapl.api.pdp.AuthorizationDecision;
 import io.sapl.api.pdp.AuthorizationSubscription;
 import io.sapl.api.pdp.Decision;
 import io.sapl.pdp.EmbeddedPolicyDecisionPoint;
-import io.sapl.springdatamongoreactive.sapl.QueryManipulationEnforcementData;
+import io.sapl.springdatacommon.handlers.DataManipulationHandler;
+import io.sapl.springdatacommon.handlers.LoggingConstraintHandlerProvider;
+import io.sapl.springdatacommon.sapl.QueryManipulationEnforcementData;
+import io.sapl.springdatacommon.sapl.queries.enforcement.ProceededDataFilterEnforcementPoint;
+import io.sapl.springdatacommon.sapl.utils.ConstraintHandlerUtils;
 import io.sapl.springdatamongoreactive.sapl.database.MethodInvocationForTesting;
 import io.sapl.springdatamongoreactive.sapl.database.TestUser;
-import io.sapl.springdatamongoreactive.sapl.handlers.DataManipulationHandler;
-import io.sapl.springdatamongoreactive.sapl.handlers.LoggingConstraintHandlerProvider;
-import io.sapl.springdatamongoreactive.sapl.utils.ConstraintHandlerUtils;
 import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
 
@@ -84,8 +85,8 @@ class ProceededDataFilterEnforcementPointTest {
     void when_actionWasFoundInPolicies_then_enforce() throws JsonProcessingException {
         var objectMapper = new ObjectMapper();
         try (@SuppressWarnings("rawtypes")
-        MockedConstruction<DataManipulationHandler> dataManipulationHandlerMockedConstruction = Mockito
-                .mockConstruction(DataManipulationHandler.class)) {
+        MockedConstruction<DataManipulationHandler> dataManipulationHandlerMockedConstruction = mockConstruction(
+                DataManipulationHandler.class)) {
             // GIVEN
             var obligations     = objectMapper.readTree(
                     "[{\"type\":\"mongoQueryManipulation\",\"conditions\":[\"{'role':  {'$in': ['USER']}}\"]},{\"type\":\"filterJsonContent\",\"actions\":[{\"type\":\"blacken\",\"path\":\"$.firstname\",\"discloseLeft\":2}]},{\"type\":\"jsonContentFilterPredicate\",\"conditions\":[{\"type\":\"==\",\"path\":\"$.id\",\"value\":\"a1\"}]}]");
@@ -93,14 +94,14 @@ class ProceededDataFilterEnforcementPointTest {
             var enforcementData = new QueryManipulationEnforcementData<>(mongoMethodInvocationTest, null,
                     TestUser.class, pdpMock, authSub);
 
-            var proceededDataFilterEnforcementPoint = new ProceededDataFilterEnforcementPoint<>(enforcementData);
+            var proceededDataFilterEnforcementPoint = new ProceededDataFilterEnforcementPoint<>(enforcementData, false);
             var dataManipulationHandler             = dataManipulationHandlerMockedConstruction.constructed().get(0);
 
             // WHEN
             when(pdpMock.decide(any(AuthorizationSubscription.class)))
                     .thenReturn(Flux.just(new AuthorizationDecision(Decision.PERMIT)));
             when(dataManipulationHandler.manipulate(obligations)).thenReturn((data) -> this.data);
-            constraintHandlerUtilsMock.when(() -> ConstraintHandlerUtils.getAdvices(any(AuthorizationDecision.class)))
+            constraintHandlerUtilsMock.when(() -> ConstraintHandlerUtils.getAdvice(any(AuthorizationDecision.class)))
                     .thenReturn(JsonNodeFactory.instance.nullNode());
             constraintHandlerUtilsMock
                     .when(() -> ConstraintHandlerUtils.getObligations(any(AuthorizationDecision.class)))
@@ -119,8 +120,8 @@ class ProceededDataFilterEnforcementPointTest {
             throws JsonProcessingException {
         var objectMapper = new ObjectMapper();
         try (@SuppressWarnings("rawtypes")
-        MockedConstruction<DataManipulationHandler> dataManipulationHandlerMockedConstruction = Mockito
-                .mockConstruction(DataManipulationHandler.class)) {
+        MockedConstruction<DataManipulationHandler> dataManipulationHandlerMockedConstruction = mockConstruction(
+                DataManipulationHandler.class)) {
             // GIVEN
             var mongoMethodInvocationTest           = new MethodInvocationForTesting("findAllByFirstname",
                     new ArrayList<>(List.of(String.class)), new ArrayList<>(List.of("Cathrin")), new Throwable());
@@ -129,11 +130,11 @@ class ProceededDataFilterEnforcementPointTest {
             var authSub                             = AuthorizationSubscription.of("", "permitTest", "");
             var enforcementData                     = new QueryManipulationEnforcementData<>(mongoMethodInvocationTest,
                     null, TestUser.class, pdpMock, authSub);
-            var proceededDataFilterEnforcementPoint = new ProceededDataFilterEnforcementPoint<>(enforcementData);
+            var proceededDataFilterEnforcementPoint = new ProceededDataFilterEnforcementPoint<>(enforcementData, false);
 
             var dataManipulationHandler = dataManipulationHandlerMockedConstruction.constructed().get(0);
             when(dataManipulationHandler.manipulate(obligations)).thenReturn((data) -> this.data);
-            constraintHandlerUtilsMock.when(() -> ConstraintHandlerUtils.getAdvices(any(AuthorizationDecision.class)))
+            constraintHandlerUtilsMock.when(() -> ConstraintHandlerUtils.getAdvice(any(AuthorizationDecision.class)))
                     .thenReturn(JsonNodeFactory.instance.nullNode());
             constraintHandlerUtilsMock
                     .when(() -> ConstraintHandlerUtils.getObligations(any(AuthorizationDecision.class)))
@@ -157,7 +158,7 @@ class ProceededDataFilterEnforcementPointTest {
         var authSub                             = AuthorizationSubscription.of("", "denyTest", "");
         var enforcementData                     = new QueryManipulationEnforcementData<>(mongoMethodInvocationTest,
                 null, TestUser.class, pdpMock, authSub);
-        var proceededDataFilterEnforcementPoint = new ProceededDataFilterEnforcementPoint<>(enforcementData);
+        var proceededDataFilterEnforcementPoint = new ProceededDataFilterEnforcementPoint<>(enforcementData, false);
 
         // WHEN
         when(pdpMock.decide(any(AuthorizationSubscription.class)))
@@ -174,7 +175,7 @@ class ProceededDataFilterEnforcementPointTest {
         var authSub                             = AuthorizationSubscription.of("", "noCorrectAction", "");
         var enforcementData                     = new QueryManipulationEnforcementData<>(mongoMethodInvocationTest,
                 null, TestUser.class, pdpMock, authSub);
-        var proceededDataFilterEnforcementPoint = new ProceededDataFilterEnforcementPoint<>(enforcementData);
+        var proceededDataFilterEnforcementPoint = new ProceededDataFilterEnforcementPoint<>(enforcementData, false);
 
         // WHEN
         when(pdpMock.decide(any(AuthorizationSubscription.class)))

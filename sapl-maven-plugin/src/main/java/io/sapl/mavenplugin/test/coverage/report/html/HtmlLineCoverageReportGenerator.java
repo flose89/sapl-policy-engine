@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2023 Dominic Heutelbeck (dominic@heutelbeck.com)
+ * Copyright (C) 2017-2024 Dominic Heutelbeck (dominic@heutelbeck.com)
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -42,7 +42,6 @@ import io.sapl.mavenplugin.test.coverage.report.model.LineCoveredValue;
 import io.sapl.mavenplugin.test.coverage.report.model.SaplDocumentCoverageInformation;
 import lombok.Data;
 import lombok.NonNull;
-import lombok.RequiredArgsConstructor;
 
 public class HtmlLineCoverageReportGenerator {
 
@@ -229,32 +228,27 @@ public class HtmlLineCoverageReportGenerator {
         String cssClass;
         String popoverContent;
     }
+  
+    private record WebDependency(
+            /**
+             * name of the dependency
+             */
+            @NonNull String name,
 
-    @RequiredArgsConstructor
-    private static class WebDependency {
-        /**
-         * name of the dependency
-         */
-        @NonNull
-        String name;
+            /**
+             * name of the actual file
+             */
+            @NonNull String fileName,
 
-        /**
-         * name of the actual file
-         */
-        @NonNull
-        String fileName;
+            /**
+             * path to the directory where actual the file is located
+             */
+            @NonNull String sourcePath,
 
-        /**
-         * path to the directory where actual the file is located
-         */
-        @NonNull
-        String sourcePath; //
-
-        /**
-         * path to where the file will be located as an asset
-         */
-        @NonNull
-        String targetPath;
+            /**
+             * path to where the file will be located as an asset
+             */
+            @NonNull String targetPath) {
     }
 
 }

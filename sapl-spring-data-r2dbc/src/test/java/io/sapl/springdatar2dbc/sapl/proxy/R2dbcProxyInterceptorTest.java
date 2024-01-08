@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2023 Dominic Heutelbeck (dominic@heutelbeck.com)
+ * Copyright (C) 2017-2024 Dominic Heutelbeck (dominic@heutelbeck.com)
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -17,6 +17,8 @@
  */
 package io.sapl.springdatar2dbc.sapl.proxy;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -28,7 +30,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.aopalliance.intercept.MethodInvocation;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.BeanFactory;
@@ -37,13 +38,13 @@ import io.sapl.api.pdp.AuthorizationDecision;
 import io.sapl.api.pdp.AuthorizationSubscription;
 import io.sapl.api.pdp.Decision;
 import io.sapl.pdp.EmbeddedPolicyDecisionPoint;
+import io.sapl.springdatacommon.handlers.AuthorizationSubscriptionHandlerProvider;
+import io.sapl.springdatacommon.sapl.QueryManipulationEnforcementData;
+import io.sapl.springdatacommon.sapl.queries.enforcement.ProceededDataFilterEnforcementPoint;
 import io.sapl.springdatar2dbc.database.MethodInvocationForTesting;
 import io.sapl.springdatar2dbc.database.Person;
 import io.sapl.springdatar2dbc.database.Role;
-import io.sapl.springdatar2dbc.sapl.QueryManipulationEnforcementData;
 import io.sapl.springdatar2dbc.sapl.QueryManipulationEnforcementPointFactory;
-import io.sapl.springdatar2dbc.sapl.handlers.AuthorizationSubscriptionHandlerProvider;
-import io.sapl.springdatar2dbc.sapl.queries.enforcement.ProceededDataFilterEnforcementPoint;
 import io.sapl.springdatar2dbc.sapl.queries.enforcement.R2dbcAnnotationQueryManipulationEnforcementPoint;
 import io.sapl.springdatar2dbc.sapl.queries.enforcement.R2dbcMethodNameQueryManipulationEnforcementPoint;
 import reactor.core.publisher.Flux;
@@ -93,10 +94,10 @@ class R2dbcProxyInterceptorTest {
         when(authSubHandlerMock.getAuthSub(any(Class.class), any(MethodInvocation.class))).thenReturn(null);
         var proxyR2dbcHandler = new R2dbcProxyInterceptor<>(authSubHandlerMock, beanFactoryMock, pdpMock, factoryMock);
 
-        IllegalStateException thrown = Assertions.assertThrows(IllegalStateException.class,
+        IllegalStateException thrown = assertThrows(IllegalStateException.class,
                 () -> proxyR2dbcHandler.invoke(methodInvocationMock));
 
-        Assertions.assertEquals(
+        assertEquals(
                 "The Sapl implementation for the manipulation of the database queries was recognised, but no AuthorizationSubscription was found.",
                 thrown.getMessage());
 
@@ -243,7 +244,7 @@ class R2dbcProxyInterceptorTest {
         var result            = (List<Person>) proxyR2dbcHandler.invoke(methodInvocationMock);
 
         // THEN
-        Assertions.assertEquals(result.get(0), malinda);
+        assertEquals(result.get(0), malinda);
 
         verify(authSubHandlerMock, times(1)).getAuthSub(any(Class.class), any(MethodInvocation.class));
         verify(factoryMock, never())
@@ -273,11 +274,10 @@ class R2dbcProxyInterceptorTest {
         var proxyR2dbcHandler = new R2dbcProxyInterceptor<>(authSubHandlerMock, beanFactoryMock, pdpMock, factoryMock);
 
         // THEN
-        ClassNotFoundException thrown = Assertions.assertThrows(ClassNotFoundException.class,
+        ClassNotFoundException thrown = assertThrows(ClassNotFoundException.class,
                 () -> proxyR2dbcHandler.invoke(methodInvocationMock));
 
-        Assertions.assertEquals("Return type of method not supported: interface java.util.stream.Stream",
-                thrown.getMessage());
+        assertEquals("Return type of method not supported: interface java.util.stream.Stream", thrown.getMessage());
 
         verify(authSubHandlerMock, times(1)).getAuthSub(any(Class.class), any(MethodInvocation.class));
         verify(factoryMock, never())

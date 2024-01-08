@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2023 Dominic Heutelbeck (dominic@heutelbeck.com)
+ * Copyright (C) 2017-2024 Dominic Heutelbeck (dominic@heutelbeck.com)
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -17,10 +17,12 @@
  */
 package io.sapl.springdatamongoreactive.sapl;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 import java.util.List;
 
 import org.apache.commons.lang3.NotImplementedException;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 class OperatorTest {
@@ -29,23 +31,23 @@ class OperatorTest {
 
     @Test
     void when_keywordNotExist_then_throwNotImplementedException() {
-        Assertions.assertThrows(NotImplementedException.class, () -> Operator.getOperatorByKeyword("notValid"));
+        assertThrows(NotImplementedException.class, () -> Operator.getOperatorByKeyword("notValid"));
     }
 
     @Test
     void when_keywordExist_then_returnOperation() {
         Operator result = Operator.getOperatorByKeyword("$lte");
-        Assertions.assertEquals(Operator.LESS_THAN_EQUAL, result);
+        assertEquals(Operator.LESS_THAN_EQUAL, result);
     }
 
     @Test
     void when_keywordExists_then_getSqlQueryBasedKeywords() {
-        Assertions.assertEquals(operator.mongoBasedKeywords, List.of("$lte", "lte"));
+        assertEquals(operator.mongoBasedKeywords, List.of("$lte", "lte"));
     }
 
     @Test
     void when_keywordExists_then_getMethodNameBasedKeywords() {
-        Assertions.assertEquals(operator.methodNameBasedKeywords, List.of("IsLessThanEqual", "LessThanEqual"));
+        assertEquals(operator.methodNameBasedKeywords, List.of("IsLessThanEqual", "LessThanEqual"));
     }
 
 }

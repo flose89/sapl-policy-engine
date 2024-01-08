@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2023 Dominic Heutelbeck (dominic@heutelbeck.com)
+ * Copyright (C) 2017-2024 Dominic Heutelbeck (dominic@heutelbeck.com)
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -17,6 +17,7 @@
  */
 package io.sapl.springdatamongoreactive.sapl.queries.enforcement;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -25,10 +26,10 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.util.ReflectionUtils;
 
+import io.sapl.springdatacommon.sapl.queries.enforcement.QueryAnnotationParameterResolver;
 import io.sapl.springdatamongoreactive.sapl.database.MethodInvocationForTesting;
 
 class QueryAnnotationParameterResolverTest {
@@ -44,10 +45,10 @@ class QueryAnnotationParameterResolverTest {
 
         // WHEN
         var result = QueryAnnotationParameterResolver.resolveBoundedMethodParametersAndAnnotationParameters(method,
-                args);
+                args, false);
 
         // THEN
-        Assertions.assertEquals(expectedResult, result);
+        assertEquals(expectedResult, result);
     }
 
     @Test
@@ -61,10 +62,10 @@ class QueryAnnotationParameterResolverTest {
 
         // WHEN
         var result = QueryAnnotationParameterResolver.resolveBoundedMethodParametersAndAnnotationParameters(method,
-                args);
+                args, false);
 
         // THEN
-        Assertions.assertEquals(expectedResult, result);
+        assertEquals(expectedResult, result);
     }
 
     @Test
