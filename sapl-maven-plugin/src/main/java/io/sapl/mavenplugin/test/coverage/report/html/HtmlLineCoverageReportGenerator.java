@@ -17,12 +17,10 @@
  */
 package io.sapl.mavenplugin.test.coverage.report.html;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -136,12 +134,9 @@ public class HtmlLineCoverageReportGenerator {
     }
 
     private void copyAssets(Path basedir, List<WebDependency> webDependencies) throws IOException {
-        boolean isJUnitTest = isJUnitTest();
         for (var webDependency : webDependencies) {
-            String sourceRelPathStr = webDependency.sourcePath + webDependency.fileName;
-            if (isJUnitTest)
-                sourceRelPathStr = sourceRelPathStr.replace("/", File.separator);
-            final InputStream source = getClass().getClassLoader().getResourceAsStream(sourceRelPathStr);
+            String            sourceRelPathStr = webDependency.sourcePath + webDependency.fileName;
+            final InputStream source           = getClass().getClassLoader().getResourceAsStream(sourceRelPathStr);
             if (source == null) {
                 final String msg = String.format("Cannot find file: %s while copying assets.", sourceRelPathStr);
                 throw new IOException(msg);
@@ -212,23 +207,13 @@ public class HtmlLineCoverageReportGenerator {
         return dependencies;
     }
 
-    private boolean isJUnitTest() {
-        StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
-        for (StackTraceElement element : stackTrace) {
-            if (element.getClassName().startsWith("org.junit.")) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     @Data
     static class HtmlPolicyLineModel {
         String lineContent;
         String cssClass;
         String popoverContent;
     }
-  
+
     private record WebDependency(
             /**
              * name of the dependency
