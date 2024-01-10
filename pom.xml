@@ -86,7 +86,7 @@
 		<vaadin.version>24.2.6</vaadin.version>
 		<reactornetty.version>1.0.40</reactornetty.version>
 		<rsocket.version>1.1.4</rsocket.version>
-		<assertj.version>3.24.2</assertj.version>
+		<assertj.version>3.25.1</assertj.version>
 		<license-maven-plugin.version>4.2</license-maven-plugin.version>
 		<dockerfile-maven-plugin.version>1.4.13</dockerfile-maven-plugin.version>
 		<jacoco.version>0.8.11</jacoco.version>
