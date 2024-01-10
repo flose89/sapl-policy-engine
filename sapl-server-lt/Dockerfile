@@ -16,7 +16,7 @@
 # limitations under the License.
 #
 
-FROM eclipse-temurin:17-jdk-alpine@sha256:24643c2dd329ef482ecd042b59cbfb7fe13716342e22674a0abd763559c8a1dd
+FROM eclipse-temurin:21-jdk-alpine@sha256:075f8207cbfecf7e509e2d93e2ffc36c097b52a8109a9bfd40326fa12bd5c438
 LABEL org.opencontainers.image.source=https://github.com/heutelbeck/sapl-policy-engine/sapl-server-lt
 RUN addgroup -S spring && adduser -S spring -G spring
 USER spring:spring
